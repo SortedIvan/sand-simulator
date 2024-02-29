@@ -17,16 +17,21 @@ struct Sand {
 	bool toProcess;
 };
 
+
+// TODO:
+// 1) change processing system
+// 2) add constraint to check left and right wall
+
+
+
 int generateRandomInt(int min, int max);
 const sf::Color DEFAULT_BG_COLOR(0x00, 0x01, 0x33);
 void InitializeParticlesMatrix(std::vector<std::vector<Sand>>& particles, int size, float sandSize, sf::Vector2f startPoint);
 void DrawAllParticles(std::vector<std::vector<Sand>>& particles, sf::RenderWindow& window);
 void RandomColorSand(std::vector<std::vector<Sand>>& particles);
-void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float &hueIncrement);
+void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float& hueIncrement);
 void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter, float& hue, float& hueIncrement);
-void HandleMouseButtonDown();
 void TryPlaceImmutable(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles);
-void TryRemoveImmutable(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles);
 
 int main() {
 
@@ -54,17 +59,12 @@ int main() {
 
 	// ---- test -----
 	while (window.isOpen()) {
-	
+
 
 		while (window.pollEvent(e)) {
 			if (e.type == sf::Event::Closed) {
 				window.close();
 			}
-
-			if (e.type == sf::Event::MouseButtonReleased) {
-				
-			}
-
 		}
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
@@ -79,17 +79,13 @@ int main() {
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
 			TryPlaceImmutable(window, particles);
 		}
-	
+
 		if (sandFallClock.getElapsedTime() >= sandFallCd) {
 			ProcessOneTick(particles, toProcess, 100, fancySandSimulation, counter, hue, hueIncrement);
 
 			// Reset the clock to start counting for the next action
 			sandFallClock.restart();
 		}
-
-
-		//RandomColorSand(particles);
-		
 
 		// --------- clear the screen ----------
 		window.clear(DEFAULT_BG_COLOR);
@@ -142,13 +138,13 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 			particles[toProcess[i].first][toProcess[i].second].active = true;
 
 			particles[toProcess[i].first][toProcess[i].second].shape
-				.setFillColor(particles[toProcess[i].first][toProcess[i].second-1].shape.getFillColor());
+				.setFillColor(particles[toProcess[i].first][toProcess[i].second - 1].shape.getFillColor());
 
 			particles[toProcess[i].first][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
 			continue;
 		}
 		else {
-			
+
 			bool leftAvailable = false;
 			bool rightAvailable = false;
 
@@ -228,8 +224,6 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 				toProcess.erase(toProcess.begin() + i);
 				continue;
 			}
-
-
 		}
 	}
 
@@ -313,7 +307,7 @@ sf::Color changeColorByHue(float hue, float increment) {
 
 void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float& hueIncrement) {
 	sf::Vector2i pos = sf::Mouse::getPosition(window);
-	
+
 	for (int i = 0; i < particles.size(); i++) {
 		for (int k = 0; k < particles.size(); k++) {
 			if (particles[i][k].shape.getGlobalBounds().contains((sf::Vector2f)pos)) {
