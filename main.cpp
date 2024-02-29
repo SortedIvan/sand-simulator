@@ -20,8 +20,8 @@ const sf::Color DEFAULT_BG_COLOR(0x00, 0x01, 0x33);
 void InitializeParticlesMatrix(std::vector<std::vector<Sand>>& particles, int size, float sandSize, sf::Vector2f startPoint);
 void DrawAllParticles(std::vector<std::vector<Sand>>& particles, sf::RenderWindow& window);
 void RandomColorSand(std::vector<std::vector<Sand>>& particles);
-void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess);
-void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom);
+void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter);
+void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter);
 void HandleMouseButtonDown();
 
 
@@ -30,15 +30,17 @@ int main() {
 	sf::RenderWindow window(sf::VideoMode(800, 800), "Test");
 	sf::Event e;
 	sf::Clock placeClock;
-	sf::Time sandPlaceCd = sf::milliseconds(50); // Adjust the cooldown duration as needed
+	sf::Time sandPlaceCd = sf::milliseconds(30); // Adjust the cooldown duration as needed
 
 	sf::Clock sandFallClock;
 	sf::Time sandFallCd = sf::milliseconds(20); // Adjust the cooldown duration as needed
 
+	bool fancySandSimulation = false;
 
 
 	std::vector<std::vector<Sand>> particles;
 	std::vector<std::pair<int, int>> toProcess;
+	int counter = 0;
 
 
 	InitializeParticlesMatrix(particles, 100, 5, sf::Vector2f(50, 50));
@@ -60,7 +62,7 @@ int main() {
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
 			if (placeClock.getElapsedTime() >= sandPlaceCd) {
-				TryPlaceSand(window, particles, toProcess);
+				TryPlaceSand(window, particles, toProcess, counter);
 
 				// Reset the clock to start counting for the next action
 				placeClock.restart();
@@ -68,7 +70,7 @@ int main() {
 		}
 	
 		if (sandFallClock.getElapsedTime() >= sandFallCd) {
-			ProcessOneTick(particles, toProcess, 100);
+			ProcessOneTick(particles, toProcess, 100, fancySandSimulation, counter);
 
 			// Reset the clock to start counting for the next action
 			sandFallClock.restart();
@@ -107,7 +109,7 @@ void InitializeParticlesMatrix(std::vector<std::vector<Sand>>& particles, int si
 	}
 }
 
-void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom) {
+void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter) {
 	for (int i = 0; i < toProcess.size(); i++) {
 		if (toProcess[i].second + 1 == bottom) {
 			particles[toProcess[i].first][toProcess[i].second].active = true;
@@ -117,10 +119,70 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 
 		if (!particles[toProcess[i].first][toProcess[i].second + 1].active) {
 			// Nothing below it, move the sand particle one tick down
-
 			particles[toProcess[i].first][toProcess[i].second].active = false;
 			toProcess[i].second = toProcess[i].second + 1;
 			particles[toProcess[i].first][toProcess[i].second].active = true;
+			continue;
+		}
+		else {
+			
+			bool leftAvailable = false;
+			bool rightAvailable = false;
+
+			if (toProcess[i].first + 1 < bottom) {
+				rightAvailable = !particles[toProcess[i].first + 1][toProcess[i].second + 1].active;
+			}
+
+			if (toProcess[i].first + 1 < bottom && toProcess[i].second - 1 >= 0) {
+				leftAvailable = !particles[toProcess[i].first - 1][toProcess[i].second + 1].active;
+			}
+
+			if (leftAvailable && rightAvailable) {
+				int randomResult = generateRandomInt(0, 1);
+
+				if (randomResult == 0) {
+					// go left
+					particles[toProcess[i].first][toProcess[i].second].active = false;
+					toProcess[i].first = toProcess[i].first - 1;
+					toProcess[i].second = toProcess[i].second + 1;
+					particles[toProcess[i].first][toProcess[i].second].active = true;
+					continue;
+				}
+				else {
+					// go right
+					particles[toProcess[i].first][toProcess[i].second].active = false;
+					toProcess[i].first = toProcess[i].first + 1;
+					toProcess[i].second = toProcess[i].second + 1;
+					particles[toProcess[i].first][toProcess[i].second].active = true;
+					continue;
+				}
+
+			}
+
+			if (leftAvailable) {
+				particles[toProcess[i].first][toProcess[i].second].active = false;
+				toProcess[i].first = toProcess[i].first - 1;
+				toProcess[i].second = toProcess[i].second + 1;
+				particles[toProcess[i].first][toProcess[i].second].active = true;
+				continue;
+			}
+
+			if (rightAvailable) {
+				// go right
+				particles[toProcess[i].first][toProcess[i].second].active = false;
+				toProcess[i].first = toProcess[i].first + 1;
+				toProcess[i].second = toProcess[i].second + 1;
+				particles[toProcess[i].first][toProcess[i].second].active = true;
+				continue;
+			}
+
+			if (!leftAvailable && !rightAvailable) {
+				particles[toProcess[i].first][toProcess[i].second].active = true;
+				toProcess.erase(toProcess.begin() + i);
+				continue;
+			}
+
+
 		}
 	}
 
@@ -153,7 +215,7 @@ void RandomColorSand(std::vector<std::vector<Sand>>& particles) {
 
 }
 
-void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess) {
+void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter) {
 	sf::Vector2i pos = sf::Mouse::getPosition(window);
 	
 	for (int i = 0; i < particles.size(); i++) {
@@ -166,6 +228,7 @@ void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& part
 				// place sand here
 				particles[i][k].active = true;
 				toProcess.push_back(std::make_pair(i, k));
+				counter++;
 			}
 		}
 	}
