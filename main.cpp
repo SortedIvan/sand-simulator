@@ -11,6 +11,7 @@
 
 struct Sand {
 	sf::RectangleShape shape;
+	sf::RectangleShape outline;
 	std::pair<int, int> index;
 	bool active;
 };
@@ -20,8 +21,8 @@ const sf::Color DEFAULT_BG_COLOR(0x00, 0x01, 0x33);
 void InitializeParticlesMatrix(std::vector<std::vector<Sand>>& particles, int size, float sandSize, sf::Vector2f startPoint);
 void DrawAllParticles(std::vector<std::vector<Sand>>& particles, sf::RenderWindow& window);
 void RandomColorSand(std::vector<std::vector<Sand>>& particles);
-void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter);
-void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter);
+void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float &hueIncrement);
+void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter, float& hue, float& hueIncrement);
 void HandleMouseButtonDown();
 
 
@@ -30,12 +31,16 @@ int main() {
 	sf::RenderWindow window(sf::VideoMode(800, 800), "Test");
 	sf::Event e;
 	sf::Clock placeClock;
-	sf::Time sandPlaceCd = sf::milliseconds(30); // Adjust the cooldown duration as needed
+	sf::Time sandPlaceCd = sf::milliseconds(15); // Adjust the cooldown duration as needed
 
 	sf::Clock sandFallClock;
-	sf::Time sandFallCd = sf::milliseconds(20); // Adjust the cooldown duration as needed
+	sf::Time sandFallCd = sf::milliseconds(15); // Adjust the cooldown duration as needed
 
 	bool fancySandSimulation = false;
+
+	sf::Clock hueClock;
+	float hue = fmod(hueClock.getElapsedTime().asSeconds() * 50, 360.0f);  // Initial hue based on time
+	float hueIncrement = 0.1f;  // Adjust the increment based on your preference
 
 
 	std::vector<std::vector<Sand>> particles;
@@ -62,7 +67,7 @@ int main() {
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
 			if (placeClock.getElapsedTime() >= sandPlaceCd) {
-				TryPlaceSand(window, particles, toProcess, counter);
+				TryPlaceSand(window, particles, toProcess, counter, hue, hueIncrement);
 
 				// Reset the clock to start counting for the next action
 				placeClock.restart();
@@ -70,7 +75,7 @@ int main() {
 		}
 	
 		if (sandFallClock.getElapsedTime() >= sandFallCd) {
-			ProcessOneTick(particles, toProcess, 100, fancySandSimulation, counter);
+			ProcessOneTick(particles, toProcess, 100, fancySandSimulation, counter, hue, hueIncrement);
 
 			// Reset the clock to start counting for the next action
 			sandFallClock.restart();
@@ -89,6 +94,8 @@ int main() {
 		// --------- display on the screen --------
 		window.display();
 
+		hue = fmod(hueClock.getElapsedTime().asSeconds() * 50, 360.0f);
+
 	}
 }
 
@@ -102,14 +109,19 @@ void InitializeParticlesMatrix(std::vector<std::vector<Sand>>& particles, int si
 			sand.index.first = i;
 			sand.index.second = k;
 			sand.shape = sf::RectangleShape(sf::Vector2f(sandSize, sandSize));
+			//sand.outline = sf::RectangleShape(sf::Vector2f(sandSize, sandSize));
+			//sand.outline.setOutlineThickness(0.5f);
+			//sand.outline.setFillColor(sf::Color::Transparent);
+
 			sand.shape.setPosition(sf::Vector2f(startPoint.x + sandSize * i, startPoint.y + sandSize * k));
+			//sand.outline.setPosition(sf::Vector2f(startPoint.x + sandSize * i, startPoint.y + sandSize * k));
 			sand.active = false;
 			particles[i][k] = sand;
 		}
 	}
 }
 
-void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter) {
+void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter, float& hue, float& hueIncrement) {
 	for (int i = 0; i < toProcess.size(); i++) {
 		if (toProcess[i].second + 1 == bottom) {
 			particles[toProcess[i].first][toProcess[i].second].active = true;
@@ -122,6 +134,11 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 			particles[toProcess[i].first][toProcess[i].second].active = false;
 			toProcess[i].second = toProcess[i].second + 1;
 			particles[toProcess[i].first][toProcess[i].second].active = true;
+
+			particles[toProcess[i].first][toProcess[i].second].shape
+				.setFillColor(particles[toProcess[i].first][toProcess[i].second-1].shape.getFillColor());
+
+			particles[toProcess[i].first][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
 			continue;
 		}
 		else {
@@ -133,7 +150,7 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 				rightAvailable = !particles[toProcess[i].first + 1][toProcess[i].second + 1].active;
 			}
 
-			if (toProcess[i].first + 1 < bottom && toProcess[i].second - 1 >= 0) {
+			if (toProcess[i].first - 1 >= 0) {
 				leftAvailable = !particles[toProcess[i].first - 1][toProcess[i].second + 1].active;
 			}
 
@@ -146,6 +163,12 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 					toProcess[i].first = toProcess[i].first - 1;
 					toProcess[i].second = toProcess[i].second + 1;
 					particles[toProcess[i].first][toProcess[i].second].active = true;
+
+					particles[toProcess[i].first][toProcess[i].second].shape
+						.setFillColor(particles[toProcess[i].first + 1][toProcess[i].second - 1].shape.getFillColor());
+
+					particles[toProcess[i].first + 1][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
+
 					continue;
 				}
 				else {
@@ -154,6 +177,12 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 					toProcess[i].first = toProcess[i].first + 1;
 					toProcess[i].second = toProcess[i].second + 1;
 					particles[toProcess[i].first][toProcess[i].second].active = true;
+
+					particles[toProcess[i].first][toProcess[i].second].shape
+						.setFillColor(particles[toProcess[i].first - 1][toProcess[i].second - 1].shape.getFillColor());
+
+					particles[toProcess[i].first - 1][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
+
 					continue;
 				}
 
@@ -164,6 +193,12 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 				toProcess[i].first = toProcess[i].first - 1;
 				toProcess[i].second = toProcess[i].second + 1;
 				particles[toProcess[i].first][toProcess[i].second].active = true;
+
+				particles[toProcess[i].first][toProcess[i].second].shape
+					.setFillColor(particles[toProcess[i].first + 1][toProcess[i].second - 1].shape.getFillColor());
+
+				particles[toProcess[i].first + 1][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
+
 				continue;
 			}
 
@@ -173,6 +208,12 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 				toProcess[i].first = toProcess[i].first + 1;
 				toProcess[i].second = toProcess[i].second + 1;
 				particles[toProcess[i].first][toProcess[i].second].active = true;
+
+				particles[toProcess[i].first][toProcess[i].second].shape
+					.setFillColor(particles[toProcess[i].first - 1][toProcess[i].second - 1].shape.getFillColor());
+
+				particles[toProcess[i].first - 1][toProcess[i].second - 1].shape.setFillColor(sf::Color::White);
+
 				continue;
 			}
 
@@ -195,6 +236,8 @@ void DrawAllParticles(std::vector<std::vector<Sand>>& particles, sf::RenderWindo
 				window.draw(particles[i][k].shape);
 			}
 
+			//window.draw(particles[i][k].outline);
+
 		}
 	}
 }
@@ -215,7 +258,54 @@ void RandomColorSand(std::vector<std::vector<Sand>>& particles) {
 
 }
 
-void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter) {
+sf::Color changeColorByHue(float hue, float increment) {
+	// Increment hue (range: 0 to 360)
+	hue = fmod(hue + increment, 360.0f);
+
+	// Convert hue to RGB
+	float c = 1.0f;
+	float x = (1.0f - std::abs(fmod(hue / 60.0f, 2.0f) - 1.0f)) * c;
+	float m = 0.0f;
+
+	float r, g, b;
+
+	if (hue < 60.0f) {
+		r = c;
+		g = x;
+		b = 0.0f;
+	}
+	else if (hue < 120.0f) {
+		r = x;
+		g = c;
+		b = 0.0f;
+	}
+	else if (hue < 180.0f) {
+		r = 0.0f;
+		g = c;
+		b = x;
+	}
+	else if (hue < 240.0f) {
+		r = 0.0f;
+		g = x;
+		b = c;
+	}
+	else if (hue < 300.0f) {
+		r = x;
+		g = 0.0f;
+		b = c;
+	}
+	else {
+		r = c;
+		g = 0.0f;
+		b = x;
+	}
+
+	return sf::Color(static_cast<sf::Uint8>((r + m) * 255),
+		static_cast<sf::Uint8>((g + m) * 255),
+		static_cast<sf::Uint8>((b + m) * 255));
+}
+
+void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float& hueIncrement) {
 	sf::Vector2i pos = sf::Mouse::getPosition(window);
 	
 	for (int i = 0; i < particles.size(); i++) {
@@ -227,12 +317,13 @@ void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& part
 
 				// place sand here
 				particles[i][k].active = true;
+				particles[i][k].shape.setFillColor(changeColorByHue(hue, hueIncrement));
+
 				toProcess.push_back(std::make_pair(i, k));
 				counter++;
 			}
 		}
 	}
-
 }
 
 int generateRandomInt(int min, int max) {
