@@ -14,6 +14,7 @@ struct Sand {
 	sf::RectangleShape outline;
 	std::pair<int, int> index;
 	bool active;
+	bool toProcess;
 };
 
 int generateRandomInt(int min, int max);
@@ -24,7 +25,8 @@ void RandomColorSand(std::vector<std::vector<Sand>>& particles);
 void TryPlaceSand(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int& counter, float& hue, float &hueIncrement);
 void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::pair<int, int>>& toProcess, int bottom, bool& fancySandSimulation, int& counter, float& hue, float& hueIncrement);
 void HandleMouseButtonDown();
-
+void TryPlaceImmutable(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles);
+void TryRemoveImmutable(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles);
 
 int main() {
 
@@ -39,7 +41,7 @@ int main() {
 	bool fancySandSimulation = false;
 
 	sf::Clock hueClock;
-	float hue = fmod(hueClock.getElapsedTime().asSeconds() * 50, 360.0f);  // Initial hue based on time
+	float hue = fmod(hueClock.getElapsedTime().asSeconds() * 10, 360.0f);  // Initial hue based on time
 	float hueIncrement = 0.1f;  // Adjust the increment based on your preference
 
 
@@ -72,6 +74,10 @@ int main() {
 				// Reset the clock to start counting for the next action
 				placeClock.restart();
 			}
+		}
+
+		if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
+			TryPlaceImmutable(window, particles);
 		}
 	
 		if (sandFallClock.getElapsedTime() >= sandFallCd) {
@@ -332,4 +338,21 @@ int generateRandomInt(int min, int max) {
 	std::uniform_int_distribution<> distribution(min, max); // Define the range
 
 	return distribution(gen); // Generate a random integer within the specified range
+}
+
+void TryPlaceImmutable(sf::RenderWindow& window, std::vector<std::vector<Sand>>& particles) {
+	sf::Vector2i pos = sf::Mouse::getPosition(window);
+
+	for (int i = 0; i < particles.size(); i++) {
+		for (int k = 0; k < particles.size(); k++) {
+			if (particles[i][k].shape.getGlobalBounds().contains((sf::Vector2f)pos)) {
+				if (particles[i][k].active) {
+					return;
+				}
+
+				// place sand here
+				particles[i][k].active = true;
+			}
+		}
+	}
 }
