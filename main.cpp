@@ -38,15 +38,15 @@ int main() {
 	sf::RenderWindow window(sf::VideoMode(800, 800), "Test");
 	sf::Event e;
 	sf::Clock placeClock;
-	sf::Time sandPlaceCd = sf::milliseconds(15); // Adjust the cooldown duration as needed
+	sf::Time sandPlaceCd = sf::milliseconds(1); // Adjust the cooldown duration as needed
 
 	sf::Clock sandFallClock;
-	sf::Time sandFallCd = sf::milliseconds(15); // Adjust the cooldown duration as needed
+	sf::Time sandFallCd = sf::milliseconds(1); // Adjust the cooldown duration as needed
 
 	bool fancySandSimulation = false;
 
 	sf::Clock hueClock;
-	float hue = fmod(hueClock.getElapsedTime().asSeconds() * 10, 360.0f);  // Initial hue based on time
+	float hue = fmod(hueClock.getElapsedTime().asSeconds() * 100, 1000.0f);  // Initial hue based on time
 	float hueIncrement = 0.1f;  // Adjust the increment based on your preference
 
 
@@ -150,10 +150,20 @@ void ProcessOneTick(std::vector<std::vector<Sand>>& particles, std::vector<std::
 
 			if (toProcess[i].first + 1 < bottom) {
 				rightAvailable = !particles[toProcess[i].first + 1][toProcess[i].second + 1].active;
+
+				if (particles[toProcess[i].first + 1][toProcess[i].second].active) {
+					rightAvailable = false; // there is a wall in the way
+				}
+
 			}
 
 			if (toProcess[i].first - 1 >= 0) {
 				leftAvailable = !particles[toProcess[i].first - 1][toProcess[i].second + 1].active;
+
+				if (particles[toProcess[i].first - 1][toProcess[i].second].active) {
+					leftAvailable = false;
+				}
+
 			}
 
 			if (leftAvailable && rightAvailable) {
